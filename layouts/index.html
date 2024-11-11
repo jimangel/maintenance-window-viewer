@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GCP Maintenance Window Visualizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #calendar {
+            max-width: 900px;
+            margin: 40px auto;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+        }
+        input, select {
+            width: 300px;
+            padding: 5px;
+        }
+        button {
+            margin-top: 15px;
+            padding: 10px 20px;
+        }
+        .event {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f8d7da;
+            border-left: 5px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+
+<h1>GCP Maintenance Window Visualizer</h1>
+
+<form id="maintenance-form">
+    <label>
+        Maintenance Start (YYYY-MM-DDTHH:MM:SSZ):
+        <input type="text" id="maintenance-start" value="2023-10-01T00:00:00Z">
+    </label>
+    <label>
+        Maintenance End (YYYY-MM-DDTHH:MM:SSZ):
+        <input type="text" id="maintenance-end" value="2023-10-01T01:00:00Z">
+    </label>
+    <label>
+        Maintenance Frequency (e.g., 'WEEKLY MO,WE,FR'):
+        <input type="text" id="maintenance-frequency" value="WEEKLY MO,WE,FR">
+    </label>
+    <label>
+        Time Zone:
+        <select id="timezone">
+            <option value="UTC">UTC</option>
+            <option value="America/Chicago">CDT (America/Chicago)</option>
+            <option value="America/New_York">EDT (America/New_York)</option>
+            <option value="America/Los_Angeles">PDT (America/Los_Angeles)</option>
+            <option value="Europe/London">BST (Europe/London)</option>
+        </select>
+    </label>
+    <button type="button" id="update-button">Update Calendar</button>
+</form>
+
+<div id='calendar'></div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.getElementById('update-button').addEventListener('click', function () {
+            updateCalendar();
+        });
+
+        function updateCalendar() {
+            var startInput = document.getElementById('maintenance-start').value.trim();
+            var endInput = document.getElementById('maintenance-end').value.trim();
+            var freqInput = document.getElementById('maintenance-frequency').value.trim();
+            var timezone = document.getElementById('timezone').value;
+
+            // Parse start and end times
+            var dtstart = new Date(startInput);
+            var dtend = new Date(endInput);
+
+            if (isNaN(dtstart) || isNaN(dtend)) {
+                alert('Invalid start or end date');
+                return;
+            }
+
+            // Compute duration in milliseconds
+            var durationMs = dtend - dtstart;
+
+            // Parse frequency
+            var freqParts = freqInput.split(' ');
+            if (freqParts.length < 2) {
+                alert('Invalid frequency format');
+                return;
+            }
+
+            var frequency = freqParts[0].toUpperCase();
+            var days = freqParts[1].split(',');
+
+            if (frequency !== 'WEEKLY' && frequency !== 'DAILY') {
+                alert('Only WEEKLY or DAILY frequencies are supported');
+                return;
+            }
+
+            // Generate occurrences (next 3 months)
+            var now = new Date();
+            var afterThreeMonths = new Date();
+            afterThreeMonths.setMonth(afterThreeMonths.getMonth() + 3);
+
+            var currentDate = new Date(dtstart);
+            var events = [];
+
+            while (currentDate <= afterThreeMonths) {
+                if (frequency === 'DAILY' || (frequency === 'WEEKLY' && days.includes(currentDate.toUTCString().split(',')[0].substring(0, 2).toUpperCase()))) {
+                    var eventStart = new Date(currentDate);
+                    var eventEnd = new Date(currentDate.getTime() + durationMs);
+
+                    // Convert to selected timezone
+                    var eventStartStr = eventStart.toLocaleString('en-US', { timeZone: timezone });
+                    var eventEndStr = eventEnd.toLocaleString('en-US', { timeZone: timezone });
+
+                    events.push({
+                        start: eventStartStr,
+                        end: eventEndStr
+                    });
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+
+            // Display events
+            var calendarDiv = document.getElementById('calendar');
+            calendarDiv.innerHTML = '';
+
+            if (events.length === 0) {
+                calendarDiv.innerHTML = '<p>No occurrences found in the next three months.</p>';
+                return;
+            }
+
+            events.forEach(function (event) {
+                var eventDiv = document.createElement('div');
+                eventDiv.className = 'event';
+                eventDiv.innerHTML = '<strong>Maintenance Window:</strong><br>' +
+                    'Start: ' + event.start + '<br>' +
+                    'End: ' + event.end;
+                calendarDiv.appendChild(eventDiv);
+            });
+        }
+    });
+</script>
+
+</body>
+</html>
