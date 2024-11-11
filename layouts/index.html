@@ -33,6 +33,14 @@
             background-color: #f8d7da;
             border-left: 5px solid #f5c6cb;
         }
+        .error {
+            color: #721c24;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -42,15 +50,15 @@
 <form id="maintenance-form">
     <label>
         Maintenance Start (YYYY-MM-DDTHH:MM:SSZ):
-        <input type="text" id="maintenance-start" value="2023-10-01T00:00:00Z">
+        <input type="text" id="maintenance-start" value="2024-10-01T00:00:00Z">
     </label>
     <label>
         Maintenance End (YYYY-MM-DDTHH:MM:SSZ):
-        <input type="text" id="maintenance-end" value="2023-10-01T01:00:00Z">
+        <input type="text" id="maintenance-end" value="2024-10-01T01:00:00Z">
     </label>
     <label>
-        Maintenance Frequency (e.g., 'WEEKLY MO,WE,FR'):
-        <input type="text" id="maintenance-frequency" value="WEEKLY MO,WE,FR">
+        Maintenance Frequency (e.g., 'FREQ=WEEKLY;BYDAY=MO,WE,FR'):
+        <input type="text" id="maintenance-frequency" value="FREQ=WEEKLY;BYDAY=MO,WE,FR">
     </label>
     <label>
         Time Zone:
@@ -73,81 +81,111 @@
             updateCalendar();
         });
 
-        function updateCalendar() {
-            var startInput = document.getElementById('maintenance-start').value.trim();
-            var endInput = document.getElementById('maintenance-end').value.trim();
-            var freqInput = document.getElementById('maintenance-frequency').value.trim();
-            var timezone = document.getElementById('timezone').value;
+        function parseMaintenanceFrequency(frequencyString) {
+            try {
+                const params = {};
+                frequencyString.split(';').forEach(param => {
+                    const [key, value] = param.split('=');
+                    params[key] = value;
+                });
 
-            // Parse start and end times
-            var dtstart = new Date(startInput);
-            var dtend = new Date(endInput);
-
-            if (isNaN(dtstart) || isNaN(dtend)) {
-                alert('Invalid start or end date');
-                return;
-            }
-
-            // Compute duration in milliseconds
-            var durationMs = dtend - dtstart;
-
-            // Parse frequency
-            var freqParts = freqInput.split(' ');
-            if (freqParts.length < 2) {
-                alert('Invalid frequency format');
-                return;
-            }
-
-            var frequency = freqParts[0].toUpperCase();
-            var days = freqParts[1].split(',');
-
-            if (frequency !== 'WEEKLY' && frequency !== 'DAILY') {
-                alert('Only WEEKLY or DAILY frequencies are supported');
-                return;
-            }
-
-            // Generate occurrences (next 3 months)
-            var now = new Date();
-            var afterThreeMonths = new Date();
-            afterThreeMonths.setMonth(afterThreeMonths.getMonth() + 3);
-
-            var currentDate = new Date(dtstart);
-            var events = [];
-
-            while (currentDate <= afterThreeMonths) {
-                if (frequency === 'DAILY' || (frequency === 'WEEKLY' && days.includes(currentDate.toUTCString().split(',')[0].substring(0, 2).toUpperCase()))) {
-                    var eventStart = new Date(currentDate);
-                    var eventEnd = new Date(currentDate.getTime() + durationMs);
-
-                    // Convert to selected timezone
-                    var eventStartStr = eventStart.toLocaleString('en-US', { timeZone: timezone });
-                    var eventEndStr = eventEnd.toLocaleString('en-US', { timeZone: timezone });
-
-                    events.push({
-                        start: eventStartStr,
-                        end: eventEndStr
-                    });
+                if (!params.FREQ || !['WEEKLY', 'DAILY'].includes(params.FREQ)) {
+                    throw new Error('FREQ must be either WEEKLY or DAILY');
                 }
-                currentDate.setDate(currentDate.getDate() + 1);
+
+                if (params.FREQ === 'WEEKLY' && params.BYDAY) {
+                    const days = params.BYDAY.split(',');
+                    const validDays = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+                    const invalidDays = days.filter(day => !validDays.includes(day));
+                    if (invalidDays.length > 0) {
+                        throw new Error(`Invalid days: ${invalidDays.join(', ')}`);
+                    }
+                }
+
+                return {
+                    frequency: params.FREQ,
+                    days: params.BYDAY ? params.BYDAY.split(',') : null
+                };
+            } catch (error) {
+                throw new Error(`Invalid frequency format: ${error.message}`);
             }
+        }
 
-            // Display events
-            var calendarDiv = document.getElementById('calendar');
-            calendarDiv.innerHTML = '';
+        function updateCalendar() {
+            try {
+                var startInput = document.getElementById('maintenance-start').value.trim();
+                var endInput = document.getElementById('maintenance-end').value.trim();
+                var freqInput = document.getElementById('maintenance-frequency').value.trim();
+                var timezone = document.getElementById('timezone').value;
 
-            if (events.length === 0) {
-                calendarDiv.innerHTML = '<p>No occurrences found in the next three months.</p>';
-                return;
+                // Parse start and end times
+                var dtstart = new Date(startInput);
+                var dtend = new Date(endInput);
+
+                if (isNaN(dtstart) || isNaN(dtend)) {
+                    throw new Error('Invalid start or end date');
+                }
+
+                // Compute duration in milliseconds
+                var durationMs = dtend - dtstart;
+
+                // Parse frequency using the new format
+                const { frequency, days } = parseMaintenanceFrequency(freqInput);
+
+                // Generate occurrences (next 3 months)
+                var now = new Date();
+                var afterThreeMonths = new Date();
+                afterThreeMonths.setMonth(afterThreeMonths.getMonth() + 3);
+
+                var currentDate = new Date(dtstart);
+                var events = [];
+
+                const dayMap = {
+                    'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6, 'SU': 0
+                };
+
+                while (currentDate <= afterThreeMonths) {
+                    const dayOfWeek = currentDate.getUTCDay();
+                    const shouldInclude = frequency === 'DAILY' || 
+                        (frequency === 'WEEKLY' && (!days || days.some(day => dayMap[day] === dayOfWeek)));
+
+                    if (shouldInclude) {
+                        var eventStart = new Date(currentDate);
+                        var eventEnd = new Date(currentDate.getTime() + durationMs);
+
+                        // Convert to selected timezone
+                        var eventStartStr = eventStart.toLocaleString('en-US', { timeZone: timezone });
+                        var eventEndStr = eventEnd.toLocaleString('en-US', { timeZone: timezone });
+
+                        events.push({
+                            start: eventStartStr,
+                            end: eventEndStr
+                        });
+                    }
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+
+                // Display events
+                var calendarDiv = document.getElementById('calendar');
+                calendarDiv.innerHTML = '';
+
+                if (events.length === 0) {
+                    calendarDiv.innerHTML = '<p>No occurrences found in the next three months.</p>';
+                    return;
+                }
+
+                events.forEach(function (event) {
+                    var eventDiv = document.createElement('div');
+                    eventDiv.className = 'event';
+                    eventDiv.innerHTML = '<strong>Maintenance Window:</strong><br>' +
+                        'Start: ' + event.start + '<br>' +
+                        'End: ' + event.end;
+                    calendarDiv.appendChild(eventDiv);
+                });
+            } catch (error) {
+                var calendarDiv = document.getElementById('calendar');
+                calendarDiv.innerHTML = `<div class="error">${error.message}</div>`;
             }
-
-            events.forEach(function (event) {
-                var eventDiv = document.createElement('div');
-                eventDiv.className = 'event';
-                eventDiv.innerHTML = '<strong>Maintenance Window:</strong><br>' +
-                    'Start: ' + event.start + '<br>' +
-                    'End: ' + event.end;
-                calendarDiv.appendChild(eventDiv);
-            });
         }
     });
 </script>
