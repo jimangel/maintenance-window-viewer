@@ -3,192 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GCP Maintenance Window Visualizer</title>
+    <title>Maintenance Window Viewer</title>
+    <script src="https://cdn.tailwindcss.com/3.4.14"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
+            background-color: #f9fafb;
         }
-        #calendar {
-            max-width: 900px;
-            margin: 40px auto;
-            border: 1px solid #ccc;
-            padding: 10px;
+        .maintenance-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
-        label {
-            display: block;
-            margin-top: 10px;
-        }
-        input, select {
-            width: 300px;
-            padding: 5px;
-        }
-        button {
-            margin-top: 15px;
-            padding: 10px 20px;
+        .maintenance-input:focus {
+            outline: none;
+            ring: 2px;
+            ring-color: #3b82f6;
+            border-color: #3b82f6;
         }
         .event {
-            margin: 10px 0;
-            padding: 10px;
-            background-color: #f8d7da;
-            border-left: 5px solid #f5c6cb;
+            background-color: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 1rem;
+            border-radius: 0 0.375rem 0.375rem 0;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
         .error {
-            color: #721c24;
-            background-color: #f8d7da;
-            border: 1px solid #f5c6cb;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
+            color: #b91c1c;
+            background-color: #fef2f2;
+            border-left: 4px solid #ef4444;
+            padding: 1rem;
+            border-radius: 0 0.375rem 0.375rem 0;
+            margin-bottom: 1rem;
         }
     </style>
 </head>
-<body>
+<body class="min-h-screen">
+    <div class="max-w-4xl mx-auto p-6">
+        <!-- Header -->
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">Maintenance Window Viewer</h1>
+            
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                <p class="text-gray-700 leading-relaxed">
+                    Simplify the visualization of UTC-based maintenance windows for Google Cloud services. This tool helps you:
+                </p>
+                <ul class="mt-2 space-y-2 list-disc list-inside text-gray-600">
+                    <li>Convert from UTC to local time</li>
+                    <li>Visualize maintenance windows across time zones</li>
+                </ul>
+            </div>
 
-<h1>GCP Maintenance Window Visualizer</h1>
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-2">Primary Use Case</h2>
+                    <p class="text-gray-600">
+                        Configure maintenance windows for GCP resources such as 
+                        <a href="https://cloud.google.com/distributed-cloud/edge/latest/docs/clusters#maintenance" 
+                           class="text-blue-600 hover:text-blue-800 underline">
+                            GDC Connected Kubernetes clusters
+                        </a>.
+                    </p>
+                </div>
+                
+                <div class="bg-gray-50 p-4 rounded-lg">
+                    <h2 class="text-lg font-semibold text-gray-700 mb-2">Additional Resources</h2>
+                    <p class="text-gray-600">
+                        For advanced scheduling patterns, check out 
+                        <a href="https://jkbrzt.github.io/rrule/" 
+                           class="text-blue-600 hover:text-blue-800 underline">
+                            RRule Tool
+                        </a>
+                        which supports complex recurrence rules.
+                    </p>
+                </div>
+            </div>
+        </header>
 
-<form id="maintenance-form">
-    <label>
-        Maintenance Start (YYYY-MM-DDTHH:MM:SSZ):
-        <input type="text" id="maintenance-start" value="2024-10-01T00:00:00Z">
-    </label>
-    <label>
-        Maintenance End (YYYY-MM-DDTHH:MM:SSZ):
-        <input type="text" id="maintenance-end" value="2024-10-01T01:00:00Z">
-    </label>
-    <label>
-        Maintenance Frequency (e.g., 'FREQ=WEEKLY;BYDAY=MO,WE,FR'):
-        <input type="text" id="maintenance-frequency" value="FREQ=WEEKLY;BYDAY=MO,WE,FR">
-    </label>
-    <label>
-        Time Zone:
-        <select id="timezone">
-            <option value="UTC">UTC</option>
-            <option value="America/Chicago">CDT (America/Chicago)</option>
-            <option value="America/New_York">EDT (America/New_York)</option>
-            <option value="America/Los_Angeles">PDT (America/Los_Angeles)</option>
-            <option value="Europe/London">BST (Europe/London)</option>
-        </select>
-    </label>
-    <button type="button" id="update-button">Update Calendar</button>
-</form>
+        <!-- Form section -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6">Configure Maintenance Window</h2>
+            <form id="maintenance-form" class="space-y-6">
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Maintenance Start (UTC)
+                            <input type="text" 
+                                   id="maintenance-start" 
+                                   value="2024-11-11T00:00:00Z"
+                                   class="maintenance-input mt-1"
+                                   placeholder="YYYY-MM-DDTHH:MM:SSZ">
+                        </label>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Maintenance End (UTC)
+                            <input type="text" 
+                                   id="maintenance-end" 
+                                   value="2024-11-11T01:00:00Z"
+                                   class="maintenance-input mt-1"
+                                   placeholder="YYYY-MM-DDTHH:MM:SSZ">
+                        </label>
+                    </div>
+                </div>
 
-<div id='calendar'></div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Maintenance Frequency
+                        <input type="text" 
+                               id="maintenance-frequency" 
+                               value="FREQ=WEEKLY;BYDAY=MO,WE,FR"
+                               class="maintenance-input mt-1"
+                               placeholder="e.g., FREQ=WEEKLY;BYDAY=MO,WE,FR">
+                    </label>
+                </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        document.getElementById('update-button').addEventListener('click', function () {
-            updateCalendar();
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Time Zone
+                        <select id="timezone" class="maintenance-input mt-1">
+                            <option value="America/Chicago">CDT (America/Chicago)</option>
+                            <option value="America/New_York">EDT (America/New_York)</option>
+                            <option value="America/Los_Angeles">PDT (America/Los_Angeles)</option>
+                            <option value="Europe/London">BST (Europe/London)</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div>
+                    <button type="button" 
+                            id="update-button"
+                            class="w-full md:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
+                        Update Calendar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Calendar section -->
+        <div id="calendar" class="bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-6">Maintenance Windows</h2>
+            <!-- Events will be inserted here by JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.getElementById('update-button').addEventListener('click', function () {
+                updateCalendar();
+            });
+
+            function parseMaintenanceFrequency(frequencyString) {
+                try {
+                    const params = {};
+                    frequencyString.split(';').forEach(param => {
+                        const [key, value] = param.split('=');
+                        params[key] = value;
+                    });
+
+                    if (!params.FREQ || !['WEEKLY', 'DAILY'].includes(params.FREQ)) {
+                        throw new Error('FREQ must be either WEEKLY or DAILY');
+                    }
+
+                    if (params.FREQ === 'WEEKLY' && params.BYDAY) {
+                        const days = params.BYDAY.split(',');
+                        const validDays = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+                        const invalidDays = days.filter(day => !validDays.includes(day));
+                        if (invalidDays.length > 0) {
+                            throw new Error(`Invalid days: ${invalidDays.join(', ')}`);
+                        }
+                    }
+
+                    return {
+                        frequency: params.FREQ,
+                        days: params.BYDAY ? params.BYDAY.split(',') : null
+                    };
+                } catch (error) {
+                    throw new Error(`Invalid frequency format: ${error.message}`);
+                }
+            }
+
+            function updateCalendar() {
+                try {
+                    var startInput = document.getElementById('maintenance-start').value.trim();
+                    var endInput = document.getElementById('maintenance-end').value.trim();
+                    var freqInput = document.getElementById('maintenance-frequency').value.trim();
+                    var timezone = document.getElementById('timezone').value;
+
+                    // Parse start and end times
+                    var dtstart = new Date(startInput);
+                    var dtend = new Date(endInput);
+
+                    if (isNaN(dtstart) || isNaN(dtend)) {
+                        throw new Error('Invalid start or end date');
+                    }
+
+                    // Compute duration in milliseconds
+                    var durationMs = dtend - dtstart;
+
+                    // Parse frequency using the new format
+                    const { frequency, days } = parseMaintenanceFrequency(freqInput);
+
+                    // Generate occurrences (next 3 months)
+                    var now = new Date();
+                    var afterThreeMonths = new Date();
+                    afterThreeMonths.setMonth(afterThreeMonths.getMonth() + 3);
+
+                    var currentDate = new Date(dtstart);
+                    var events = [];
+
+                    const dayMap = {
+                        'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6, 'SU': 0
+                    };
+
+                    while (currentDate <= afterThreeMonths) {
+                        const dayOfWeek = currentDate.getUTCDay();
+                        const shouldInclude = frequency === 'DAILY' || 
+                            (frequency === 'WEEKLY' && (!days || days.some(day => dayMap[day] === dayOfWeek)));
+
+                        if (shouldInclude) {
+                            var eventStart = new Date(currentDate);
+                            var eventEnd = new Date(currentDate.getTime() + durationMs);
+
+                            // Convert to selected timezone
+                            var eventStartStr = eventStart.toLocaleString('en-US', { timeZone: timezone });
+                            var eventEndStr = eventEnd.toLocaleString('en-US', { timeZone: timezone });
+
+                            events.push({
+                                start: eventStartStr,
+                                end: eventEndStr
+                            });
+                        }
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+
+                    // Display events
+                    var calendarDiv = document.getElementById('calendar');
+                    calendarDiv.innerHTML = '<h2 class="text-xl font-semibold text-gray-800 mb-6">Maintenance Windows</h2>';
+
+                    if (events.length === 0) {
+                        calendarDiv.innerHTML += '<p class="text-gray-600">No occurrences found in the next three months.</p>';
+                        return;
+                    }
+
+                    events.forEach(function (event) {
+                        var eventDiv = document.createElement('div');
+                        eventDiv.className = 'event';
+                        eventDiv.innerHTML = `
+                            <div class="font-medium text-gray-800 mb-2">Maintenance Window</div>
+                            <div class="text-gray-600">
+                                <div class="mb-1">Start: ${event.start}</div>
+                                <div>End: ${event.end}</div>
+                            </div>`;
+                        calendarDiv.appendChild(eventDiv);
+                    });
+                } catch (error) {
+                    var calendarDiv = document.getElementById('calendar');
+                    calendarDiv.innerHTML = `<div class="error">${error.message}</div>`;
+                }
+            }
         });
-
-        function parseMaintenanceFrequency(frequencyString) {
-            try {
-                const params = {};
-                frequencyString.split(';').forEach(param => {
-                    const [key, value] = param.split('=');
-                    params[key] = value;
-                });
-
-                if (!params.FREQ || !['WEEKLY', 'DAILY'].includes(params.FREQ)) {
-                    throw new Error('FREQ must be either WEEKLY or DAILY');
-                }
-
-                if (params.FREQ === 'WEEKLY' && params.BYDAY) {
-                    const days = params.BYDAY.split(',');
-                    const validDays = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
-                    const invalidDays = days.filter(day => !validDays.includes(day));
-                    if (invalidDays.length > 0) {
-                        throw new Error(`Invalid days: ${invalidDays.join(', ')}`);
-                    }
-                }
-
-                return {
-                    frequency: params.FREQ,
-                    days: params.BYDAY ? params.BYDAY.split(',') : null
-                };
-            } catch (error) {
-                throw new Error(`Invalid frequency format: ${error.message}`);
-            }
-        }
-
-        function updateCalendar() {
-            try {
-                var startInput = document.getElementById('maintenance-start').value.trim();
-                var endInput = document.getElementById('maintenance-end').value.trim();
-                var freqInput = document.getElementById('maintenance-frequency').value.trim();
-                var timezone = document.getElementById('timezone').value;
-
-                // Parse start and end times
-                var dtstart = new Date(startInput);
-                var dtend = new Date(endInput);
-
-                if (isNaN(dtstart) || isNaN(dtend)) {
-                    throw new Error('Invalid start or end date');
-                }
-
-                // Compute duration in milliseconds
-                var durationMs = dtend - dtstart;
-
-                // Parse frequency using the new format
-                const { frequency, days } = parseMaintenanceFrequency(freqInput);
-
-                // Generate occurrences (next 3 months)
-                var now = new Date();
-                var afterThreeMonths = new Date();
-                afterThreeMonths.setMonth(afterThreeMonths.getMonth() + 3);
-
-                var currentDate = new Date(dtstart);
-                var events = [];
-
-                const dayMap = {
-                    'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6, 'SU': 0
-                };
-
-                while (currentDate <= afterThreeMonths) {
-                    const dayOfWeek = currentDate.getUTCDay();
-                    const shouldInclude = frequency === 'DAILY' || 
-                        (frequency === 'WEEKLY' && (!days || days.some(day => dayMap[day] === dayOfWeek)));
-
-                    if (shouldInclude) {
-                        var eventStart = new Date(currentDate);
-                        var eventEnd = new Date(currentDate.getTime() + durationMs);
-
-                        // Convert to selected timezone
-                        var eventStartStr = eventStart.toLocaleString('en-US', { timeZone: timezone });
-                        var eventEndStr = eventEnd.toLocaleString('en-US', { timeZone: timezone });
-
-                        events.push({
-                            start: eventStartStr,
-                            end: eventEndStr
-                        });
-                    }
-                    currentDate.setDate(currentDate.getDate() + 1);
-                }
-
-                // Display events
-                var calendarDiv = document.getElementById('calendar');
-                calendarDiv.innerHTML = '';
-
-                if (events.length === 0) {
-                    calendarDiv.innerHTML = '<p>No occurrences found in the next three months.</p>';
-                    return;
-                }
-
-                events.forEach(function (event) {
-                    var eventDiv = document.createElement('div');
-                    eventDiv.className = 'event';
-                    eventDiv.innerHTML = '<strong>Maintenance Window:</strong><br>' +
-                        'Start: ' + event.start + '<br>' +
-                        'End: ' + event.end;
-                    calendarDiv.appendChild(eventDiv);
-                });
-            } catch (error) {
-                var calendarDiv = document.getElementById('calendar');
-                calendarDiv.innerHTML = `<div class="error">${error.message}</div>`;
-            }
-        }
-    });
-</script>
-
+    </script>
 </body>
 </html>
